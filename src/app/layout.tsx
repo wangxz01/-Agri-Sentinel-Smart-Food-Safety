@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SecureBurn 即焚便签",
   description: "一次性读取并销毁的安全便签",
+  icons: {
+    icon: [{ url: "/logo.png", type: "image/png", sizes: "64x64" }],
+    shortcut: [{ url: "/logo.png", type: "image/png" }],
+    apple: [{ url: "/logo.png" }],
+  },
 };
 
 export default function RootLayout({
