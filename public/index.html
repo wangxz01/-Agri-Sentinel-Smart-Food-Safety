@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>神农-智察 - 智慧食安监管平台</title>
+<link rel="stylesheet" href="/style.css">
+<script src="https://fastly.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<header>
+<h1>神农·智察 <span class="subtitle-en">Agri Sentinel – Smart Food Safety</span></h1>
+<button id="fit-btn">适配辖区范围</button>
+<button id="simulate-btn">模拟AI风险预警</button>
+</header>
+<div class="main-container">
+<aside class="left-panel">
+<section class="kpi-grid">
+<div class="kpi-card" id="kpi-total">
+<div class="kpi-title">监管对象总数</div>
+<div class="kpi-value" data-value>12,480</div>
+<div class="kpi-trend"><svg viewBox="0 0 100 24" preserveAspectRatio="none"><polyline points="0,20 15,18 30,16 45,14 60,13 75,11 90,8 100,6" fill="none" stroke="#64ffda" stroke-width="2"/></svg><span class="kpi-delta">↑ 2.1%</span></div>
+</div>
+<div class="kpi-card" id="kpi-risk">
+<div class="kpi-title">风险企业数</div>
+<div class="kpi-value" data-value>238</div>
+<div class="kpi-trend"><svg viewBox="0 0 100 24" preserveAspectRatio="none"><polyline points="0,8 15,10 30,12 45,14 60,13 75,15 90,18 100,20" fill="none" stroke="#f97583" stroke-width="2"/></svg><span class="kpi-delta">↑ 0.6%</span></div>
+</div>
+<div class="kpi-card" id="kpi-inspected">
+<div class="kpi-title">本月已检查</div>
+<div class="kpi-value" data-value>1,942</div>
+<div class="kpi-trend"><svg viewBox="0 0 100 24" preserveAspectRatio="none"><polyline points="0,18 20,15 40,16 60,12 80,10 100,8" fill="none" stroke="#64ffda" stroke-width="2"/></svg><span class="kpi-delta">↑ 4.7%</span></div>
+</div>
+</section>
+<section class="event-log">
+<div class="event-log-header">实时风险事件</div>
+<ul class="event-list" id="event-list"></ul>
+</section>
+</aside>
+<section class="right-panel">
+<div class="map-container" id="map-chart">
+<div class="map-title">风险热力示意</div>
+<div class="map-grid"></div>
+</div>
+</section>
+</div>
+<div class="modal" id="ai-modal">
+<div class="modal-card">
+<div class="modal-header">
+<div class="modal-title">AI 智能决策</div>
+<button class="close-btn" data-close="#ai-modal">关闭</button>
+</div>
+<div class="modal-content" id="ai-content">系统检测到风险异常波动，建议立即复核抽检批次，并对高风险区域加强巡检与封样。</div>
+<div class="actions">
+<button class="action" id="apply-ai">执行处置</button>
+<button class="action" id="open-trace">查看溯源</button>
+</div>
+</div>
+</div>
+<div class="modal" id="trace-modal">
+<div class="modal-card">
+<div class="modal-header">
+<div class="modal-title">区块链溯源</div>
+<button class="close-btn" data-close="#trace-modal">关闭</button>
+</div>
+<div class="modal-content" id="trace-content">批次号 SN-2025-1105，上链时间 2025-11-16 10:22:14，来源地 湖南·益阳，环节完整性校验通过。</div>
+</div>
+</div>
+<script>
+const eventList=document.getElementById('event-list');
+const aiModal=document.getElementById('ai-modal');
+const traceModal=document.getElementById('trace-modal');
+const simulateBtn=document.getElementById('simulate-btn');
+const kpiRisk=document.querySelector('#kpi-risk [data-value]');
+function now(){const d=new Date();const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`}
+function relative(ts){const diff=Math.floor((Date.now()-ts)/1000);if(diff<60)return `${diff} 秒前`;const m=Math.floor(diff/60);if(m<60)return `${m} 分钟前`;const h=Math.floor(m/60);if(h<24)return `${h} 小时前`;const d=Math.floor(h/24);return `${d} 天前`}
+function severityFrom(text){if(/一级风险/.test(text))return {label:'一级',cls:'level-1'};if(/二级风险/.test(text))return {label:'二级',cls:'level-2'};if(/三级风险/.test(text))return {label:'三级',cls:'level-3'};return {label:'预警',cls:'level-0'}}
+function updateRelativeTimes(){document.querySelectorAll('.event-time').forEach(el=>{const ts=Number(el.dataset.ts||0);if(ts){el.textContent=relative(ts)}})}
+function addEvent(text,extra){const li=document.createElement('li');li.className='event-item';if(extra)li.classList.add(extra);const left=document.createElement('div');left.textContent=text;const badgeInfo=severityFrom(text||'');const badge=document.createElement('span');badge.className='event-badge '+badgeInfo.cls;badge.textContent=badgeInfo.label;const time=document.createElement('span');time.className='event-time';const ts=Date.now();time.dataset.ts=String(ts);time.title=now();time.textContent=relative(ts);li.appendChild(left);li.appendChild(badge);li.appendChild(time);eventList.prepend(li);updateRelativeTimes()}
+function openModal(el){el.classList.add('active')}
+function closeModal(el){el.classList.remove('active');el.classList.remove('visible')}
+simulateBtn.addEventListener('click',()=>{openModal(aiModal);addEvent('AI识别到冷链温控异常，涉及批次 SN-2025-1105');const n=parseInt(kpiRisk.textContent.replace(/[^0-9]/g,''),10)||0;kpiRisk.textContent=(n+1).toLocaleString()});
+document.querySelectorAll('.close-btn').forEach(btn=>{btn.addEventListener('click',()=>{const sel=btn.getAttribute('data-close');const el=document.querySelector(sel);if(el)closeModal(el)})});
+document.getElementById('open-trace').addEventListener('click',()=>{openModal(traceModal)});
+document.getElementById('apply-ai').addEventListener('click',()=>{addEvent('已下发处置指令：复核抽检、加密链路监控、封样留证');closeModal(aiModal)});
+setInterval(updateRelativeTimes,60000);
+</script>
+<script src="/app.js"></script>
+</body>
+</html>
